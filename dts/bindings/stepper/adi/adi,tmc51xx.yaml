@@ -1,24 +1,24 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024 Carl Zeiss Meditec AG
+# SPDX-FileCopyrightText: Copyright (c) 2025 Prevas A/S
 # SPDX-License-Identifier: Apache-2.0
 
 description: |
-  Analog Devices TMC50XX Stepper Motor Controller
+  Analog Devices TMC51XX Stepper Motor Controller
 
   Example:
 
     &spi0 {
         /* SPI bus options here, not shown */
 
-        /* Dual controller/driver for up to two 2-phase bipolar stepper motors */
-        tmc50xx: tmc50xx@0 {
-            compatible = "adi,tmc50xx";
+        /* Controller/driver for one 2-phase bipolar stepper motor */
+        tmc51xx: tmc51xx@0 {
+            compatible = "adi,tmc51xx";
             reg = <0>;
             spi-max-frequency = <DT_FREQ_M(24)>; /* Maximum SPI bus frequency */
 
             #address-cells = <1>;
             #size-cells = <0>;
 
-            poscmp-enable; test-mode; lock-gconf; /* ADI TMC Global configuration flags */
+            en-pwm-mode; test-mode; /* ADI TMC Global configuration flags */
             clock-frequency = <DT_FREQ_M(16)>; /* Internal/External Clock frequency */
 
             motor: motor@0 {
@@ -44,8 +44,10 @@ description: |
                 amax = <60>;
                 dmax = <70>;
                 tzerowait = <80>;
-                vhigh = <90>;
-                vcoolthrs = <100>;
+                thigh = <90>;
+                tcoolthrs = <100>;
+                tpwmthrs = <110>;
+                tpowerdown = <120>;
                 ihold = <1>;
                 irun = <2>;
                 iholddelay = <3>;
@@ -54,15 +56,14 @@ description: |
     };
 
 
-compatible: "adi,tmc50xx"
+compatible: "adi,tmc51xx"
 
 include:
   - name: spi-device.yaml
   - name: adi,trinamic-gconf.yaml
     property-allowlist:
-      - poscmp-enable
+      - en-pwm-mode
       - test-mode
-      - lock-gconf
 
 properties:
   "#address-cells":
@@ -100,8 +101,10 @@ child-binding:
         - d1
         - vstop
         - tzerowait
-        - vhigh
-        - vcoolthrs
+        - thigh
+        - tcoolthrs
+        - tpwmthrs
+        - tpowerdown
         - ihold
         - irun
         - iholddelay
