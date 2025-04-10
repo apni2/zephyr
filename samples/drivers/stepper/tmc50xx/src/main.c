@@ -43,7 +43,7 @@ int main(void)
 
 	/* Change Max Velocity during runtime */
 	int32_t tmc_velocity = DT_PROP(DT_ALIAS(stepper), vmax) * CONFIG_MAX_VELOCITY_MULTIPLIER;
-	(void)tmc50xx_stepper_set_max_velocity(stepper, tmc_velocity);
+	(void)tmc5xxx_stepper_set_max_velocity(stepper, tmc_velocity);
 
 	for (;;) {
 		if (k_sem_take(&steps_completed_sem, K_FOREVER) == 0) {
