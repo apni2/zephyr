@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <zephyr/drivers/stepper.h>
@@ -17,6 +18,27 @@
 
 LOG_MODULE_REGISTER(tmc5xxx, CONFIG_STEPPER_LOG_LEVEL);
 
+#if defined(CONFIG_STEPPER_ADI_TMC50XX_LOG_STATUS) || defined(CONFIG_STEPPER_ADI_TMC51XX_LOG_STATUS)
+
+void log_status(const uint8_t status_byte, const char *spi_status[])
+{
+	char buf[110];
+	int n = snprintf(buf, sizeof(buf), "0x%02x", status_byte);
+
+	for (uint8_t i = 0; i < 8; ++i) {
+		if (status_byte & BIT(i)) {
+			n += snprintf(buf + n, sizeof(buf) - n, " %s", spi_status[i]);
+			if (n >= sizeof(buf)) {
+				buf[sizeof(buf) - 1] = '\0';
+				break;
+			}
+		}
+	}
+	LOG_DBG("%s", buf);
+}
+
+#endif
+
 int tmc5xxx_write(const struct device *dev, const uint8_t reg_addr, const uint32_t reg_val)
 {
 	const struct tmc5xxx_config *config = dev->config;
@@ -26,7 +48,7 @@ int tmc5xxx_write(const struct device *dev, const uint8_t reg_addr, const uint32
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	err = tmc_spi_write_register(&bus, TMC5XXX_WRITE_BIT, reg_addr, reg_val);
+	err = tmc_spi_write_register(&bus, TMC5XXX_WRITE_BIT, reg_addr, reg_val, config->parse_tmc_spi_status);
 
 	k_sem_give(&data->sem);
 
@@ -46,7 +68,7 @@ int tmc5xxx_read(const struct device *dev, const uint8_t reg_addr, uint32_t *reg
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	err = tmc_spi_read_register(&bus, TMC5XXX_ADDRESS_MASK, reg_addr, reg_val);
+	err = tmc_spi_read_register(&bus, TMC5XXX_ADDRESS_MASK, reg_addr, reg_val, config->parse_tmc_spi_status);
 
 	k_sem_give(&data->sem);
 
