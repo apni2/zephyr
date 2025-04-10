@@ -8,6 +8,7 @@
 
 #include <zephyr/drivers/stepper.h>
 #include <zephyr/drivers/stepper/stepper_trinamic.h>
+#include "adi_tmc_spi.h"
 
 struct tmc5xxx_data {
 	struct k_sem sem;
@@ -17,6 +18,7 @@ struct tmc5xxx_config {
 	const uint32_t gconf;
 	struct spi_dt_spec spi;
 	const uint32_t clock_frequency;
+	parse_tmc_spi_status_t parse_tmc_spi_status;
 };
 
 struct tmc5xxx_stepper_data {
@@ -46,6 +48,7 @@ struct tmc5xxx_stepper_config {
 #endif
 };
 
+void log_status(const uint8_t status_byte, const char *spi_status[]);
 int tmc5xxx_write(const struct device *dev, const uint8_t reg_addr, const uint32_t reg_val);
 int tmc5xxx_read(const struct device *dev, const uint8_t reg_addr, uint32_t *reg_val);
 int tmc5xxx_rampstat_work_handler(struct k_work *work);

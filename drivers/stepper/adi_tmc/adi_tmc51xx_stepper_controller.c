@@ -18,6 +18,35 @@
 
 LOG_MODULE_REGISTER(tmc51xx, CONFIG_STEPPER_LOG_LEVEL);
 
+static void parse_tmc_spi_status(const uint8_t status_byte)
+{
+	if ((status_byte & BIT_MASK(0)) != 0) {
+		LOG_WRN("spi dataframe: reset_flag detected");
+	}
+	if ((status_byte & BIT_MASK(1)) != 0) {
+		LOG_WRN("spi dataframe: driver_error detected");
+	}
+
+#ifdef CONFIG_STEPPER_ADI_TMC51XX_LOG_STATUS
+	static const char *spi_status[8] = {
+                "reset_flag",
+                "driver_error",
+                "sg2",
+                "standstill",
+                "velocity_reached",
+                "position_reached",
+                "status_stop_l",
+                "status_stop_r"
+	};
+
+	static uint8_t status_last;
+	if (status_byte != status_last) {
+		status_last = status_byte;
+		log_status(status_byte & ~0x1, spi_status); /* ignore reset_flag */
+	}
+#endif
+}
+
 #ifdef CONFIG_STEPPER_ADI_TMC51XX_RAMPSTAT_POLL
 
 static void tmc51xx_rampstat_work_handler(struct k_work *work)
@@ -238,7 +267,8 @@ static DEVICE_API(stepper, tmc51xx_stepper_api) = {
 		DT_INST_FOREACH_CHILD(inst, TMC51XX_SHAFT_CONFIG)),				\
 		.spi = SPI_DT_SPEC_INST_GET(inst, (SPI_OP_MODE_MASTER | SPI_TRANSFER_MSB |	\
 					SPI_MODE_CPOL | SPI_MODE_CPHA |	SPI_WORD_SET(8)), 0),	\
-		.clock_frequency = DT_INST_PROP(inst, clock_frequency)};			\
+		.clock_frequency = DT_INST_PROP(inst, clock_frequency),				\
+		.parse_tmc_spi_status = parse_tmc_spi_status};					\
 	DT_INST_FOREACH_CHILD(inst, TMC51XX_STEPPER_CONFIG_DEFINE);				\
 	DT_INST_FOREACH_CHILD(inst, TMC51XX_STEPPER_DATA_DEFINE);				\
 	DT_INST_FOREACH_CHILD(inst, TMC51XX_STEPPER_DEFINE);					\
