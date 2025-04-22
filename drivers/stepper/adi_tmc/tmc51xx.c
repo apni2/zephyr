@@ -13,6 +13,7 @@
 
 #include "adi_tmc_spi.h"
 #include "adi_tmc5xxx_common.h"
+#include "tmc5xxx.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(tmc51xx, CONFIG_STEPPER_LOG_LEVEL);
@@ -50,6 +51,28 @@ static void tmc51xx_diag0_gpio_callback_handler(const struct device *port, struc
 						gpio_port_pins_t pins);
 static int rampstat_read_clear(const struct device *dev, uint32_t *rampstat_value);
 
+static void parse_tmc_spi_status(const uint8_t status_byte)
+{
+#ifdef CONFIG_STEPPER_ADI_TMC51XX_LOG_STATUS
+	static const char *spi_status[TMC5XXX_SPI_STATUS_BITS] = {
+		"reset_flag",
+		"driver_error",
+		"sg2",
+		"standstill",
+		"velocity_reached",
+		"position_reached",
+		"status_stop_l",
+		"status_stop_r"
+	};
+
+	static uint8_t status_last;
+
+	tmc5xxx_log_status(status_byte, spi_status, &status_last);
+#else
+	(void)status_byte;
+#endif
+}
+
 static int tmc51xx_write(const struct device *dev, const uint8_t reg_addr, const uint32_t reg_val)
 {
 	const struct tmc51xx_config *config = dev->config;
@@ -59,7 +82,8 @@ static int tmc51xx_write(const struct device *dev, const uint8_t reg_addr, const
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	err = tmc_spi_write_register(&bus, TMC5XXX_WRITE_BIT, reg_addr, reg_val);
+	err = tmc_spi_write_register(&bus, TMC5XXX_WRITE_BIT, reg_addr, reg_val,
+					parse_tmc_spi_status);
 
 	k_sem_give(&data->sem);
 
@@ -79,7 +103,8 @@ static int tmc51xx_read(const struct device *dev, const uint8_t reg_addr, uint32
 
 	k_sem_take(&data->sem, K_FOREVER);
 
-	err = tmc_spi_read_register(&bus, TMC5XXX_ADDRESS_MASK, reg_addr, reg_val);
+	err = tmc_spi_read_register(&bus, TMC5XXX_ADDRESS_MASK, reg_addr, reg_val,
+					parse_tmc_spi_status);
 
 	k_sem_give(&data->sem);
 
@@ -683,7 +708,7 @@ static int tmc51xx_init(const struct device *dev)
 		return -ENODEV;
 	}
 
-	LOG_DBG("GCONF: %d", config->gconf);
+	LOG_DBG("GCONF: %08x", config->gconf);
 	err = tmc51xx_write(dev, TMC5XXX_GCONF, config->gconf);
 	if (err != 0) {
 		return -EIO;
